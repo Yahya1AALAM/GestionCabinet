@@ -12,7 +12,7 @@ import java.sql.Types;
 public class DatabaseUtil {
     private static final String DB_URL = "jdbc:mysql://localhost:3306/cabinet";
     private static final String DB_USER = "root";
-    private static final String DB_PASSWORD = "";
+    private static final String DB_PASSWORD = "root";
 
     public static Connection getConnection() throws SQLException {
         try {
@@ -41,41 +41,51 @@ public class DatabaseUtil {
         }
     }
 
-    public static boolean savePatient(String nom, String prenom, String cin, java.sql.Date dateNaissance, String tel,
-                                      String email, String sexe, String adresse) throws SQLException {
-        String sql = "INSERT INTO Patient (nom, prenom, cin, date_naissance, telephone, email, sexe, adresse) "
-                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+    public static boolean savePatient(String nom, String prenom, String cin,
+                                      java.sql.Date dateNaissance, String tel,
+                                      String email, String sexe, String adresse,
+                                      String groupeSanguin, String assurance,
+                                      String secuSociale, String contactUrgence,
+                                      String allergies, String traitement,
+                                      String maladieChronique, String antecedentsMedicaux,
+                                      String antecedentsChirurgicaux, String motifConsultation)
+            throws SQLException {
 
-        try (Connection conn = getConnection()) {
-            conn.setAutoCommit(false);
+        String sql = "INSERT INTO patient (nom, prenom, cin, date_naissance, telephone, " +
+                "email, sexe, adresse, groupe_sanguin, assurance, securite_sociale, " +
+                "contact_urgence, allergies, traitement_cours, maladie_chronique, " +
+                "antecedents_medicaux, antecedents_chirurgicaux, motif_consultation) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
-            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-                stmt.setString(1, nom);
-                stmt.setString(2, prenom);
-                stmt.setString(3, cin);
-                if (dateNaissance != null) {
-                    stmt.setDate(4, dateNaissance);
-                } else {
-                    stmt.setNull(4, Types.DATE);
-                }
-                stmt.setString(5, tel);
-                stmt.setString(6, email);
-                stmt.setString(7, sexe);
-                stmt.setString(8, adresse);
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-                int rowsAffected = stmt.executeUpdate();
-                conn.commit();
-                return rowsAffected > 0;
-            } catch (SQLException ex) {
-                conn.rollback();
-                throw ex;
-            }
+            stmt.setString(1, nom);
+            stmt.setString(2, prenom);
+            stmt.setString(3, cin);
+            stmt.setDate(4, dateNaissance);
+            stmt.setString(5, tel);
+            stmt.setString(6, email);
+            stmt.setString(7, sexe);
+            stmt.setString(8, adresse);
+            stmt.setString(9, groupeSanguin);
+            stmt.setString(10, assurance);
+            stmt.setString(11, secuSociale);
+            stmt.setString(12, contactUrgence);
+            stmt.setString(13, allergies);
+            stmt.setString(14, traitement);
+            stmt.setString(15, maladieChronique);
+            stmt.setString(16, antecedentsMedicaux);
+            stmt.setString(17, antecedentsChirurgicaux);
+            stmt.setString(18, motifConsultation);
+
+            return stmt.executeUpdate() > 0;
         }
     }
 
     public static boolean updatePatient(int id, String nom, String prenom, String cin, java.sql.Date dateNaissance,
                                         String tel, String email, String sexe, String adresse) throws SQLException {
-        String sql = "UPDATE Patient SET nom=?, prenom=?, cin=?, date_naissance=?, telephone=?, email=?, sexe=?, adresse=? "
+        String sql = "UPDATE patient SET nom=?, prenom=?, cin=?, date_naissance=?, telephone=?, email=?, sexe=?, adresse=? "
                 + "WHERE id_patient=?";
 
         try (Connection conn = getConnection();
@@ -102,9 +112,57 @@ public class DatabaseUtil {
         }
     }
 
+    // NOUVELLE MÉTHODE POUR METTRE À JOUR TOUS LES CHAMPS
+    public static boolean updatePatientWithAllFields(int id, String nom, String prenom, String cin,
+                                                     java.sql.Date dateNaissance, String tel, String email,
+                                                     String sexe, String adresse, String groupeSanguin,
+                                                     String assurance, String secuSociale, String contactUrgence,
+                                                     String allergies, String traitement, String maladieChronique,
+                                                     String antecedentsMedicaux, String antecedentsChirurgicaux,
+                                                     String motifConsultation) throws SQLException {
+
+        String sql = "UPDATE patient SET nom=?, prenom=?, cin=?, date_naissance=?, telephone=?, " +
+                "email=?, sexe=?, adresse=?, groupe_sanguin=?, assurance=?, securite_sociale=?, " +
+                "contact_urgence=?, allergies=?, traitement_cours=?, maladie_chronique=?, " +
+                "antecedents_medicaux=?, antecedents_chirurgicaux=?, motif_consultation=? " +
+                "WHERE id_patient=?";
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, nom);
+            stmt.setString(2, prenom);
+            stmt.setString(3, cin);
+
+            if (dateNaissance != null) {
+                stmt.setDate(4, dateNaissance);
+            } else {
+                stmt.setNull(4, Types.DATE);
+            }
+
+            stmt.setString(5, tel);
+            stmt.setString(6, email);
+            stmt.setString(7, sexe);
+            stmt.setString(8, adresse);
+            stmt.setString(9, groupeSanguin);
+            stmt.setString(10, assurance);
+            stmt.setString(11, secuSociale);
+            stmt.setString(12, contactUrgence);
+            stmt.setString(13, allergies);
+            stmt.setString(14, traitement);
+            stmt.setString(15, maladieChronique);
+            stmt.setString(16, antecedentsMedicaux);
+            stmt.setString(17, antecedentsChirurgicaux);
+            stmt.setString(18, motifConsultation);
+            stmt.setInt(19, id);
+
+            return stmt.executeUpdate() > 0;
+        }
+    }
+
     public static boolean saveAppointment(int patientId, int doctorId, Timestamp dateTime,
                                           String status, Integer testTypeId) throws SQLException {
-        String sql = "INSERT INTO RendezVous (patient_id, medecin_id, date_heure_debut, statut, type_test_id) "
+        String sql = "INSERT INTO rendezvous (patient_id, medecin_id, date_heure_debut, statut, type_test_id) "
                 + "VALUES (?, ?, ?, ?, ?)";
 
         try (Connection conn = getConnection();
@@ -128,7 +186,7 @@ public class DatabaseUtil {
 
     public static boolean updateAppointment(int appointmentId, int patientId, int doctorId,
                                             Timestamp dateTime, String status, Integer testTypeId) throws SQLException {
-        String sql = "UPDATE RendezVous SET patient_id=?, medecin_id=?, date_heure_debut=?, "
+        String sql = "UPDATE rendezvous SET patient_id=?, medecin_id=?, date_heure_debut=?, "
                 + "statut=?, type_test_id=? WHERE id_rdv=?";
 
         try (Connection conn = getConnection();
@@ -154,7 +212,7 @@ public class DatabaseUtil {
 
     public static boolean updateDoctor(int id, String nom, String prenom, String specialite,
                                        String telephone, String email) throws SQLException {
-        String sql = "UPDATE Medecin SET nom=?, prenom=?, specialite=?, telephone=?, email=? WHERE id_medecin=?";
+        String sql = "UPDATE medecin SET nom=?, prenom=?, specialite=?, telephone=?, email=? WHERE id_medecin=?";
 
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
