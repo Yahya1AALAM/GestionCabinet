@@ -1,14 +1,93 @@
 package cabinet.views;
 
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 
 public class MainDashboard extends JFrame{
     private final String role;
-    private final int userId; // Stocker l'ID de l'utilisateur connecté
+    private final int userId;
     private JLabel statusBar = new JLabel("Prêt");
 
+    // Classe interne DashboardPanel professionnelle et sobre
+    private class DashboardPanel extends JPanel {
+        public DashboardPanel() {
+            setLayout(new BorderLayout());
+            setBackground(new Color(250, 250, 250));
+            setBorder(new EmptyBorder(20, 20, 20, 20));
+
+            createProfessionalDashboard();
+        }
+
+        private void createProfessionalDashboard() {
+            // Header simple
+            JPanel headerPanel = createHeaderPanel();
+            add(headerPanel, BorderLayout.NORTH);
+
+            // Statistiques essentielles
+            JPanel statsPanel = createStatsPanel();
+            add(statsPanel, BorderLayout.CENTER);
+        }
+
+        private JPanel createHeaderPanel() {
+            JPanel headerPanel = new JPanel(new BorderLayout());
+            headerPanel.setBackground(new Color(250, 250, 250));
+            headerPanel.setBorder(new EmptyBorder(0, 0, 30, 0));
+
+            JLabel welcomeLabel = new JLabel(
+                    "<html><div style='color: #2c3e50;'>"
+                            + "<span style='font-size:24px; font-weight:bold;'>Tableau de Bord - Cabinet Médical</span><br>"
+                            + "<span style='font-size:14px; color: #7f8c8d;'>Connecté en tant que " + role + "</span>"
+                            + "</div></html>"
+            );
+
+            headerPanel.add(welcomeLabel, BorderLayout.WEST);
+            return headerPanel;
+        }
+
+        private JPanel createStatsPanel() {
+            JPanel statsPanel = new JPanel(new GridLayout(2, 2, 15, 15));
+            statsPanel.setBackground(new Color(250, 250, 250));
+
+            // Seulement les statistiques essentielles pour la gestion
+            statsPanel.add(createStatCard("Patients Aujourd'hui", "12", new Color(41, 128, 185)));
+            statsPanel.add(createStatCard("Rendez-vous Aujourd'hui", "8", new Color(39, 174, 96)));
+            statsPanel.add(createStatCard("Revenue Mensuel", "131,111.00 DH", new Color(142, 68, 173)));
+            statsPanel.add(createStatCard("Médecins Disponibles", "3", new Color(243, 156, 18)));
+
+            return statsPanel;
+        }
+
+        private JPanel createStatCard(String title, String value, Color color) {
+            JPanel card = new JPanel(new BorderLayout());
+            card.setBackground(Color.WHITE);
+            card.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(new Color(220, 220, 220), 1),
+                    new EmptyBorder(20, 20, 20, 20)
+            ));
+
+            // Titre
+            JLabel titleLabel = new JLabel(title);
+            titleLabel.setFont(new Font("Arial", Font.BOLD, 14));
+            titleLabel.setForeground(new Color(80, 80, 80));
+
+            // Valeur
+            JLabel valueLabel = new JLabel(value);
+            valueLabel.setFont(new Font("Arial", Font.BOLD, 18));
+            valueLabel.setForeground(color);
+
+            JPanel contentPanel = new JPanel();
+            contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
+            contentPanel.setBackground(Color.WHITE);
+            contentPanel.add(titleLabel);
+            contentPanel.add(Box.createVerticalStrut(10));
+            contentPanel.add(valueLabel);
+
+            card.add(contentPanel, BorderLayout.CENTER);
+            return card;
+        }
+    }
 
     private JPanel createDashboardPanel() {
         return new DashboardPanel();
@@ -22,7 +101,6 @@ public class MainDashboard extends JFrame{
         revalidate();
         repaint();
     }
-
 
     private void initComponents() {
         setTitle("Tableau de Bord - Cabinet Médical [" + role + "]");
@@ -38,6 +116,19 @@ public class MainDashboard extends JFrame{
         exitItem.addActionListener(e -> System.exit(0));
         fileMenu.add(exitItem);
         menuBar.add(fileMenu);
+
+        // Menu Accueil
+        JMenu homeMenu = new JMenu("Accueil");
+        JMenuItem dashboardItem = new JMenuItem("Tableau de Bord");
+        dashboardItem.addActionListener(e -> {
+            getContentPane().removeAll();
+            add(new DashboardPanel(), BorderLayout.CENTER);
+            revalidate();
+            repaint();
+            setStatus("Tableau de bord");
+        });
+        homeMenu.add(dashboardItem);
+        menuBar.add(homeMenu);
 
         // Menu Patients (commun)
         JMenu patientsMenu = new JMenu("Patients");
@@ -120,7 +211,6 @@ public class MainDashboard extends JFrame{
         if ("Medecin".equals(role)) {
             JMenu adminMenu = new JMenu("Administration");
 
-            // Option pour créer un secrétaire
             JMenuItem createSecretaryItem = new JMenuItem("Créer un secrétaire");
             createSecretaryItem.addActionListener(this::openCreateSecretary);
             adminMenu.add(createSecretaryItem);
@@ -131,16 +221,8 @@ public class MainDashboard extends JFrame{
 
         setJMenuBar(menuBar);
 
-        // Contenu principal
-        JLabel welcomeLabel = new JLabel(
-                "<html><div style='text-align:center; font-size:24px;'>"
-                        + "Bienvenue dans le système de gestion de cabinet médical<br>"
-                        + "Vous êtes connecté en tant que <b>" + role + "</b>"
-                        + "</div></html>",
-                SwingConstants.CENTER
-        );
-
-        add(welcomeLabel, BorderLayout.CENTER);
+        // Contenu principal - Dashboard par défaut
+        add(new DashboardPanel(), BorderLayout.CENTER);
     }
 
     private void openCreateSecretary(ActionEvent e) {
