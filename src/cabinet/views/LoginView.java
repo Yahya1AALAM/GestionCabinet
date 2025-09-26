@@ -212,13 +212,13 @@ public class LoginView extends JFrame {
         char[] password = passwordField.getPassword();
 
         if (username.isEmpty()) {
-            showError("Veuillez saisir un nom d'utilisateur");
+            showError("Veuillez saisir votre nom d'utilisateur", "Champ obligatoire");
             usernameField.requestFocus();
             return;
         }
 
         if (password.length == 0) {
-            showError("Veuillez saisir un mot de passe");
+            showError("Veuillez saisir votre mot de passe", "Champ obligatoire");
             passwordField.requestFocus();
             return;
         }
@@ -234,7 +234,10 @@ public class LoginView extends JFrame {
 
                 SwingUtilities.invokeLater(() -> {
                     try (Connection conn = DatabaseUtil.getConnection()) {
-                        String sql = "SELECT * FROM utilisateur WHERE nom_utilisateur = ?";
+                        String sql = "SELECT u.*, m.nom, m.prenom " +
+                                "FROM utilisateur u " +
+                                "LEFT JOIN medecin m ON u.medecin_id = m.id_medecin " +
+                                "WHERE u.nom_utilisateur = ? AND u.is_active = 1";
                         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                             stmt.setString(1, username);
 
@@ -246,17 +249,24 @@ public class LoginView extends JFrame {
                                     if (inputHash.equals(storedHash)) {
                                         String role = rs.getString("role");
                                         int userId = rs.getInt("id_utilisateur");
-                                        openDashboard(role, userId);
+
+                                        // Récupérer le nom complet de manière intelligente
+                                        String nomComplet = getNomComplet(rs, username);
+
+                                        openDashboard(role, userId, nomComplet);
                                     } else {
-                                        showError("Mot de passe incorrect");
+                                        showError("Le mot de passe saisi est incorrect", "Erreur d'authentification");
+                                        passwordField.setText("");
+                                        passwordField.requestFocus();
                                     }
                                 } else {
-                                    showError("Utilisateur non trouvé");
+                                    showError("Aucun utilisateur trouvé avec ce nom d'utilisateur", "Utilisateur introuvable");
+                                    usernameField.requestFocus();
                                 }
                             }
                         }
                     } catch (Exception e) {
-                        showError("Erreur de connexion à la base de données");
+                        showError("Erreur de connexion à la base de données: " + e.getMessage(), "Erreur système");
                         e.printStackTrace();
                     } finally {
                         Arrays.fill(password, '0');
@@ -267,24 +277,69 @@ public class LoginView extends JFrame {
 
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
+                loginButton.setEnabled(true);
+                loginButton.setText("Se connecter");
             }
         }).start();
     }
 
-    private void showError(String message) {
-        JOptionPane.showMessageDialog(this, message,
-                "Erreur d'authentification", JOptionPane.ERROR_MESSAGE);
-        passwordField.setText("");
-        passwordField.requestFocus();
+    private String getNomComplet(ResultSet rs, String username) {
+        try {
+            // Essayer d'abord de récupérer le nom du médecin si disponible
+            String nomMedecin = rs.getString("nom");
+            String prenomMedecin = rs.getString("prenom");
+
+            if (nomMedecin != null && prenomMedecin != null &&
+                    !nomMedecin.trim().isEmpty() && !prenomMedecin.trim().isEmpty()) {
+                return nomMedecin + " " + prenomMedecin;
+            }
+        } catch (Exception e) {
+            // En cas d'erreur, utiliser le nom d'utilisateur
+            System.err.println("Erreur lors de la récupération du nom complet: " + e.getMessage());
+        }
+
+        // Fallback: utiliser le nom d'utilisateur formaté
+        return username.substring(0, 1).toUpperCase() + username.substring(1).toLowerCase();
     }
 
-    private void openDashboard(String role, int userId) {
+    private void showError(String message, String title) {
+        JOptionPane.showMessageDialog(this,
+                "<html><center>" + message + "</center></html>",
+                title,
+                JOptionPane.ERROR_MESSAGE);
+    }
+
+    private void showSuccess(String message, String title) {
+        JOptionPane.showMessageDialog(this,
+                "<html><center>" + message + "</center></html>",
+                title,
+                JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private void openDashboard(String role, int userId, String nomComplet) {
         // Animation de fermeture
         setVisible(false);
 
-        JOptionPane.showMessageDialog(this,
-                "Connexion réussie!\nBienvenue " + role,
-                "Authentification réussie", JOptionPane.INFORMATION_MESSAGE);
+        // Message de bienvenue personnalisé selon le rôle
+        String roleDisplay = "";
+        switch(role) {
+            case "Medecin":
+                roleDisplay = "Docteur";
+                break;
+            case "Secretaire":
+                roleDisplay = "Secrétaire médicale";
+                break;
+            default:
+                roleDisplay = role;
+        }
+
+        showSuccess(
+                "✅ <b>Authentification réussie</b><br><br>" +
+                        "Bienvenue <b>" + nomComplet + "</b><br>" +
+                        "Rôle : <b>" + roleDisplay + "</b><br><br>" +
+                        "Redirection vers le tableau de bord...",
+                "Connexion établie"
+        );
 
         dispose();
 
