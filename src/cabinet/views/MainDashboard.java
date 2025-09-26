@@ -110,14 +110,7 @@ public class MainDashboard extends JFrame{
 
         JMenuBar menuBar = new JMenuBar();
 
-        // Menu Fichier
-        JMenu fileMenu = new JMenu("Fichier");
-        JMenuItem exitItem = new JMenuItem("Quitter");
-        exitItem.addActionListener(e -> System.exit(0));
-        fileMenu.add(exitItem);
-        menuBar.add(fileMenu);
-
-        // Menu Accueil
+        // Menu Accueil (premier menu)
         JMenu homeMenu = new JMenu("Accueil");
         JMenuItem dashboardItem = new JMenuItem("Tableau de Bord");
         dashboardItem.addActionListener(e -> {
@@ -130,7 +123,7 @@ public class MainDashboard extends JFrame{
         homeMenu.add(dashboardItem);
         menuBar.add(homeMenu);
 
-        // Menu Patients (commun)
+        // Menu Patients
         JMenu patientsMenu = new JMenu("Patients");
         JMenuItem listPatientsItem = new JMenuItem("Liste des patients");
         listPatientsItem.addActionListener(e -> {
@@ -141,6 +134,14 @@ public class MainDashboard extends JFrame{
         });
         patientsMenu.add(listPatientsItem);
 
+        JMenuItem patientsItem = new JMenuItem("Gestion des patients");
+        patientsItem.addActionListener(e -> {
+            getContentPane().removeAll();
+            add(new PatientManagementView(), BorderLayout.CENTER);
+            revalidate();
+            repaint();
+        });
+        patientsMenu.add(patientsItem);
         menuBar.add(patientsMenu);
 
         // Menu Médecins (uniquement pour les administrateurs)
@@ -168,16 +169,6 @@ public class MainDashboard extends JFrame{
         });
         rdvMenu.add(listRdvItem);
         menuBar.add(rdvMenu);
-
-        // Ajouter la gestion des patients au menu
-        JMenuItem patientsItem = new JMenuItem("Gestion des patients");
-        patientsItem.addActionListener(e -> {
-            getContentPane().removeAll();
-            add(new PatientManagementView(), BorderLayout.CENTER);
-            revalidate();
-            repaint();
-        });
-        patientsMenu.add(patientsItem);
 
         // Menu Facturation (uniquement pour les médecins et secrétaires)
         if ("Medecin".equals(role) || "Secretaire".equals(role)) {
@@ -217,8 +208,51 @@ public class MainDashboard extends JFrame{
 
             menuBar.add(adminMenu);
         }
-        add(statusBar, BorderLayout.SOUTH);
 
+        // Menu Utilisateur (à droite avec déconnexion)
+        JMenu userMenu = new JMenu("Utilisateur");
+
+        // Option de déconnexion
+        JMenuItem logoutItem = new JMenuItem("Déconnexion");
+        logoutItem.addActionListener(e -> {
+            int response = JOptionPane.showConfirmDialog(
+                    this,
+                    "Êtes-vous sûr de vouloir vous déconnecter ?",
+                    "Confirmation de déconnexion",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.QUESTION_MESSAGE
+            );
+
+            if (response == JOptionPane.YES_OPTION) {
+                this.dispose(); // Ferme la fenêtre actuelle
+                // Ouvre la fenêtre de connexion
+                new LoginView().setVisible(true);
+            }
+        });
+        userMenu.add(logoutItem);
+
+        // Option Quitter (déplacée dans le menu Utilisateur)
+        JMenuItem exitItem = new JMenuItem("Quitter l'application");
+        exitItem.addActionListener(e -> {
+            int response = JOptionPane.showConfirmDialog(
+                    this,
+                    "Êtes-vous sûr de vouloir quitter l'application ?",
+                    "Confirmation de fermeture",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.QUESTION_MESSAGE
+            );
+
+            if (response == JOptionPane.YES_OPTION) {
+                System.exit(0);
+            }
+        });
+        userMenu.add(exitItem);
+
+        // Ajouter le menu utilisateur à droite
+        menuBar.add(Box.createHorizontalGlue()); // Pousse le menu à droite
+        menuBar.add(userMenu);
+
+        add(statusBar, BorderLayout.SOUTH);
         setJMenuBar(menuBar);
 
         // Contenu principal - Dashboard par défaut
