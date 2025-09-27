@@ -90,6 +90,7 @@ public class PatientManagementView extends JPanel {
         ImageIcon editIcon = loadIconSafe("/icons/edit.png", 16, 16);
         ImageIcon deleteIcon = loadIconSafe("/icons/delete.png", 16, 16);
         ImageIcon refreshIcon = loadIconSafe("/icons/refresh.png", 16, 16);
+        ImageIcon rdvIcon = loadIconSafe("/icons/calendar.png", 16, 16); // Icône pour RDV
 
         addButton = new JButton("Ajouter", addIcon);
         addButton.setToolTipText("Ajouter un patient");
@@ -103,6 +104,11 @@ public class PatientManagementView extends JPanel {
         deleteButton.setToolTipText("Supprimer le patient sélectionné");
         deleteButton.addActionListener(this::deletePatient);
 
+        // NOUVEAU BOUTON : Créer un RDV
+        JButton createRdvButton = new JButton("Créer un RDV", rdvIcon);
+        createRdvButton.setToolTipText("Créer un rendez-vous pour ce patient");
+        createRdvButton.addActionListener(this::openCreateRdvDialog);
+
         refreshButton = new JButton("Actualiser", refreshIcon);
         refreshButton.setToolTipText("Actualiser la liste");
         refreshButton.addActionListener(e -> loadPatients());
@@ -110,6 +116,8 @@ public class PatientManagementView extends JPanel {
         toolBar.add(addButton);
         toolBar.add(editButton);
         toolBar.add(deleteButton);
+        toolBar.addSeparator();
+        toolBar.add(createRdvButton); // Ajout du nouveau bouton
         toolBar.addSeparator();
         toolBar.add(refreshButton);
 
@@ -119,7 +127,7 @@ public class PatientManagementView extends JPanel {
 
         mainPanel.add(topPanel, BorderLayout.NORTH);
 
-        // TABLEAU
+        // TABLEAU (votre code existant reste inchangé)
         tableModel = new DefaultTableModel(
                 new Object[]{"ID", "Nom", "Prénom", "CIN", "Date de naissance", "Téléphone", "Email"}, 0) {
             @Override
@@ -135,18 +143,17 @@ public class PatientManagementView extends JPanel {
         // Centrer les cellules
         DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
         centerRenderer.setHorizontalAlignment(SwingConstants.CENTER);
-        // appliquer après création des colonnes
         patientsTable.setDefaultRenderer(Object.class, centerRenderer);
 
-        // Ajuster largeur colonne si possible
+        // Ajuster largeur colonne
         patientsTable.setAutoResizeMode(JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS);
-        patientsTable.getColumnModel().getColumn(0).setPreferredWidth(50);   // ID
-        patientsTable.getColumnModel().getColumn(1).setPreferredWidth(140);  // Nom
-        patientsTable.getColumnModel().getColumn(2).setPreferredWidth(140);  // Prénom
-        patientsTable.getColumnModel().getColumn(3).setPreferredWidth(110);  // CIN
-        patientsTable.getColumnModel().getColumn(4).setPreferredWidth(120);  // Date naissance
-        patientsTable.getColumnModel().getColumn(5).setPreferredWidth(120);  // Téléphone
-        patientsTable.getColumnModel().getColumn(6).setPreferredWidth(170);  // Email
+        patientsTable.getColumnModel().getColumn(0).setPreferredWidth(50);
+        patientsTable.getColumnModel().getColumn(1).setPreferredWidth(140);
+        patientsTable.getColumnModel().getColumn(2).setPreferredWidth(140);
+        patientsTable.getColumnModel().getColumn(3).setPreferredWidth(110);
+        patientsTable.getColumnModel().getColumn(4).setPreferredWidth(120);
+        patientsTable.getColumnModel().getColumn(5).setPreferredWidth(120);
+        patientsTable.getColumnModel().getColumn(6).setPreferredWidth(170);
 
         JScrollPane scrollPane = new JScrollPane(patientsTable);
         mainPanel.add(scrollPane, BorderLayout.CENTER);
@@ -270,6 +277,30 @@ public class PatientManagementView extends JPanel {
                     "Erreur", JOptionPane.ERROR_MESSAGE);
             ex.printStackTrace();
         }
+    }
+
+    private void openCreateRdvDialog(ActionEvent e) {
+        int selectedRow = patientsTable.getSelectedRow();
+        if (selectedRow == -1) {
+            JOptionPane.showMessageDialog(this, "Veuillez sélectionner un patient",
+                    "Information", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        // Récupérer l'ID du patient sélectionné
+        int patientId = (int) patientsTable.getValueAt(selectedRow, 0);
+
+        // Récupérer le nom et prénom du patient pour l'affichage
+        String nomPatient = (String) patientsTable.getValueAt(selectedRow, 1);
+        String prenomPatient = (String) patientsTable.getValueAt(selectedRow, 2);
+
+        // Ouvrir le dialogue de création de rendez-vous
+        AddAppointmentDialog dialog = new AddAppointmentDialog(
+                (JFrame) SwingUtilities.getWindowAncestor(this), patientId, nomPatient + " " + prenomPatient);
+        dialog.setVisible(true);
+
+        // Optionnel: Recharger les données si nécessaire
+        // loadPatients();
     }
 
     private void searchPatients() {

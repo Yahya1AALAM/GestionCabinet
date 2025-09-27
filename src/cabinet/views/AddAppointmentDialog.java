@@ -6,6 +6,8 @@ import javax.swing.*;
 import java.awt.*;
 import java.sql.*;
 import java.util.Calendar;
+import java.util.HashMap;
+import java.util.Map;
 
 public class AddAppointmentDialog extends JDialog {
     private JComboBox<String> patientCombo, doctorCombo, testTypeCombo, statusCombo;
@@ -13,10 +15,32 @@ public class AddAppointmentDialog extends JDialog {
     private JSpinner timeSpinner;
     private JButton saveButton;
 
+    // Maps pour stocker la correspondance entre l'affichage et les IDs
+    private Map<String, Integer> patientMap;
+    private Map<String, Integer> doctorMap;
+    private Map<String, Integer> testTypeMap;
+
+    // Constructeur existant (pour création manuelle de RDV)
     public AddAppointmentDialog(JFrame parent) {
         super(parent, "Nouveau Rendez-vous", true);
+        patientMap = new HashMap<>();
+        doctorMap = new HashMap<>();
+        testTypeMap = new HashMap<>();
         initComponents();
         loadComboBoxData();
+        setSize(500, 400);
+        setLocationRelativeTo(parent);
+    }
+
+    // NOUVEAU CONSTRUCTEUR pour ouverture avec patient pré-sélectionné
+    public AddAppointmentDialog(JFrame parent, int patientId, String patientName) {
+        super(parent, "Nouveau Rendez-vous pour " + patientName, true);
+        patientMap = new HashMap<>();
+        doctorMap = new HashMap<>();
+        testTypeMap = new HashMap<>();
+        initComponents();
+        loadComboBoxData();
+        preselectPatient(patientId, patientName); // Pré-sélectionner le patient
         setSize(500, 400);
         setLocationRelativeTo(parent);
     }
@@ -73,13 +97,21 @@ public class AddAppointmentDialog extends JDialog {
         doctorCombo.removeAllItems();
         testTypeCombo.removeAllItems();
 
+        // Vider les maps
+        patientMap.clear();
+        doctorMap.clear();
+        testTypeMap.clear();
+
         // Charger les patients
         try (Connection conn = DatabaseUtil.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery("SELECT id_patient, nom, prenom FROM Patient ORDER BY nom, prenom")) {
 
             while (rs.next()) {
-                patientCombo.addItem(rs.getString("nom") + " " + rs.getString("prenom") + " (ID:" + rs.getInt("id_patient") + ")");
+                String displayText = rs.getString("nom") + " " + rs.getString("prenom");
+                int patientId = rs.getInt("id_patient");
+                patientCombo.addItem(displayText);
+                patientMap.put(displayText, patientId);
             }
         } catch (SQLException ex) {
             JOptionPane.showMessageDialog(this, "Erreur de chargement des patients: " + ex.getMessage(),
@@ -93,7 +125,10 @@ public class AddAppointmentDialog extends JDialog {
              ResultSet rs = stmt.executeQuery("SELECT id_medecin, nom, prenom FROM Medecin ORDER BY nom, prenom")) {
 
             while (rs.next()) {
-                doctorCombo.addItem(rs.getString("nom") + " " + rs.getString("prenom") + " (ID:" + rs.getInt("id_medecin") + ")");
+                String displayText = rs.getString("nom") + " " + rs.getString("prenom");
+                int doctorId = rs.getInt("id_medecin");
+                doctorCombo.addItem(displayText);
+                doctorMap.put(displayText, doctorId);
             }
         } catch (SQLException ex) {
             JOptionPane.showMessageDialog(this, "Erreur de chargement des médecins: " + ex.getMessage(),
@@ -108,15 +143,33 @@ public class AddAppointmentDialog extends JDialog {
 
             // Ajouter une option vide pour "Aucun test"
             testTypeCombo.addItem("Aucun test");
+            testTypeMap.put("Aucun test", null);
 
             while (rs.next()) {
-                testTypeCombo.addItem(rs.getString("nom") + " (ID:" + rs.getInt("id_type_test") + ")");
+                String displayText = rs.getString("nom");
+                int testTypeId = rs.getInt("id_type_test");
+                testTypeCombo.addItem(displayText);
+                testTypeMap.put(displayText, testTypeId);
             }
         } catch (SQLException ex) {
             JOptionPane.showMessageDialog(this, "Erreur de chargement des types de test: " + ex.getMessage(),
                     "Erreur", JOptionPane.ERROR_MESSAGE);
             ex.printStackTrace();
         }
+    }
+
+    // Méthode pour pré-sélectionner un patient
+    private void preselectPatient(int patientId, String patientName) {
+        // Rechercher le patient dans la map
+        for (Map.Entry<String, Integer> entry : patientMap.entrySet()) {
+            if (entry.getValue() == patientId) {
+                patientCombo.setSelectedItem(entry.getKey());
+                break;
+            }
+        }
+
+        // Désactiver la sélection du patient puisque c'est déjà choisi
+        patientCombo.setEnabled(false);
     }
 
     private void saveAppointment() {
@@ -127,12 +180,18 @@ public class AddAppointmentDialog extends JDialog {
             return;
         }
 
-        // Extraire les IDs des combobox
-        String patientItem = (String) patientCombo.getSelectedItem();
-        int patientId = Integer.parseInt(patientItem.substring(patientItem.lastIndexOf("(ID:") + 4, patientItem.length() - 1));
+        // Récupérer les IDs à partir des maps
+        String patientDisplay = (String) patientCombo.getSelectedItem();
+        Integer patientId = patientMap.get(patientDisplay);
 
-        String doctorItem = (String) doctorCombo.getSelectedItem();
-        int doctorId = Integer.parseInt(doctorItem.substring(doctorItem.lastIndexOf("(ID:") + 4, doctorItem.length() - 1));
+        String doctorDisplay = (String) doctorCombo.getSelectedItem();
+        Integer doctorId = doctorMap.get(doctorDisplay);
+
+        if (patientId == null || doctorId == null) {
+            JOptionPane.showMessageDialog(this, "Erreur: impossible de trouver l'ID du patient ou du médecin",
+                    "Erreur", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
 
         // Date et heure
         java.util.Date date = dateChooser.getDate();
@@ -152,9 +211,9 @@ public class AddAppointmentDialog extends JDialog {
 
         // Type de test (optionnel)
         Integer testTypeId = null;
-        if (testTypeCombo.getSelectedItem() != null && !((String) testTypeCombo.getSelectedItem()).isEmpty()) {
-            String testItem = (String) testTypeCombo.getSelectedItem();
-            testTypeId = Integer.parseInt(testItem.substring(testItem.lastIndexOf("(ID:") + 4, testItem.length() - 1));
+        if (testTypeCombo.getSelectedItem() != null && !testTypeCombo.getSelectedItem().equals("Aucun test")) {
+            String testDisplay = (String) testTypeCombo.getSelectedItem();
+            testTypeId = testTypeMap.get(testDisplay);
         }
 
         String status = (String) statusCombo.getSelectedItem();
